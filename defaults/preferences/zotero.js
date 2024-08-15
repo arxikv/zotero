@@ -19,7 +19,7 @@ pref("extensions.zotero.debug.store.submitSize",10000000);
 pref("extensions.zotero.debug.store.submitLineLength",10000);
 pref("extensions.zotero.debug.level",5);
 pref("extensions.zotero.automaticScraperUpdates",true);
-pref("extensions.zotero.triggerProxyAuthentication", true);
+pref("extensions.zotero.triggerProxyAuthentication", false);
 // Proxy auth URLs should respond successfully to HEAD requests over HTTP and HTTPS (in case of forced HTTPS requests)
 pref("extensions.zotero.proxyAuthenticationURLs", "https://www.acm.org,https://www.ebscohost.com,https://www.sciencedirect.com,https://ieeexplore.ieee.org,https://www.jstor.org,http://www.ovid.com,https://link.springer.com,https://www.tandfonline.com");
 pref("extensions.zotero.openURL.resolver","");
