@@ -976,7 +976,7 @@ Zotero.Retractions = {
 	},
 	
 	_getURLPrefix: function () {
-		var url = (Zotero.Prefs.get("api.url") || ZOTERO_CONFIG.API_URL);
+		var url = (Zotero.Prefs.get("api.url") || "https://api.zotero.org/");
 		if (!url.endsWith('/')) {
 			url += '/';
 		}
