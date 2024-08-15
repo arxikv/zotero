@@ -211,14 +211,15 @@ Zotero.Relations = new function () {
 		for (let type of _types) {
 			let sql = `SELECT DISTINCT object FROM ${type}Relations WHERE object LIKE ?`;
 			let objects = yield Zotero.DB.columnQueryAsync(
-				sql, 'http://zotero.org/users/' + fromUserID + '/%'
+				sql, `${ZOTERO_CONFIG.WWW_BASE_URL}users/${fromUserID}/%`
 			);
 			Zotero.DB.addCurrentCallback("commit", function* () {
 				for (let object of objects) {
 					let subPrefs = yield this.getByObject(type, object);
+					let baseEscaped = ZOTERO_CONFIG.WWW_BASE_URL.replace(/\./g, "\\.");
 					let newObject = object.replace(
-						new RegExp("^http://zotero.org/users/" + fromUserID + "/(.*)"),
-						"http://zotero.org/users/" + toUserID + "/$1"
+						new RegExp(`^${baseEscaped}users/${fromUserID}/(.*)`),
+						`${ZOTERO_CONFIG.WWW_BASE_URL}users/${toUserID}/$1`
 					);
 					for (let subPref of subPrefs) {
 						this.unregister(type, subPref.subject.id, subPref.predicate, object);
@@ -227,9 +228,9 @@ Zotero.Relations = new function () {
 				}
 			}.bind(this));
 			
-			sql = "UPDATE " + type + "Relations SET "
-				+ "object=REPLACE(object, 'zotero.org/users/" + fromUserID + "/', "
-				+ "'zotero.org/users/" + toUserID + "/')";
+			sql = `UPDATE ${type}Relations SET `
+				+ `object=REPLACE(object, '${ZOTERO_CONFIG.WWW_BASE_URL}users/${fromUserID}/', `
+				+ `'${ZOTERO_CONFIG.WWW_BASE_URL}users/${toUserID}/')`;
 			yield Zotero.DB.queryAsync(sql);
 			
 			var objectsClass = Zotero.DataObjectUtilities.getObjectsClassForObjectType(type);

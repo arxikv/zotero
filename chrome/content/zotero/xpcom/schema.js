@@ -2703,6 +2703,8 @@ Zotero.Schema = new function(){
 		//
 		// Each block performs the changes necessary to move from the
 		// previous revision to that one.
+		let baseURL = ZOTERO_CONFIG.WWW_BASE_URL;
+		let baseEscaped = baseURL.replace(/\./g, "\\.");
 		for (let i = fromVersion + 1; i <= toVersion; i++) {
 			if (i == 80) {
 				await _updateCompatibility(1);
@@ -3095,12 +3097,13 @@ Zotero.Schema = new function(){
 			}
 			
 			else if (i == 86) {
-				let rows = await Zotero.DB.queryAsync("SELECT ROWID AS id, * FROM itemRelations WHERE SUBSTR(object, 1, 18)='http://zotero.org/' AND NOT INSTR(object, 'item')");
+				let rows = await Zotero.DB.queryAsync(`SELECT ROWID AS id, * FROM itemRelations WHERE object LIKE '${baseURL}%' AND NOT INSTR(object, 'item')`);
 				for (let i = 0; i < rows.length; i++) {
 					// http://zotero.org/users/local/aFeGasdGSdH/8QZ36WQ3 -> http://zotero.org/users/local/aFeGasdGSdH/items/8QZ36WQ3
 					// http://zotero.org/users/12341/8QZ36WQ3 -> http://zotero.org/users/12341/items/8QZ36WQ3
 					// http://zotero.org/groups/12341/8QZ36WQ3 -> http://zotero.org/groups/12341/items/8QZ36WQ3
-					let newObject = rows[i].object.replace(/^(http:\/\/zotero.org\/(?:(?:users|groups)\/\d+|users\/local\/[^\/]+))\/([A-Z0-9]{8})$/, '$1/items/$2');
+					let replaceExp = new RegExp(`^(${baseEscaped}(?:(?:users|groups)/\d+|users/local/[^/]+))/([A-Z0-9]{8})$`);
+					let newObject = rows[i].object.replace(replaceExp, '$1/items/$2');
 					await Zotero.DB.queryAsync("UPDATE itemRelations SET object=? WHERE ROWID=?", [newObject, rows[i].id]);
 				}
 			}
@@ -3144,16 +3147,16 @@ Zotero.Schema = new function(){
 					let newSubjectlibraryID, newSubjectKey, newObjectKey;
 					
 					let object = row.object;
-					if (!object.startsWith('http://zotero.org/')) continue;
-					object = object.substr(18);
-					let newObjectURI = 'http://zotero.org/';
+					if (!object.startsWith(baseURL)) continue;
+					object = object.substr(baseURL.length);
+					let newObjectURI = baseURL;
 					
 					// Fix missing 'local' from 80
 					let matches = object.match(/^users\/([a-zA-Z0-9]{8})\/items\/([A-Z0-9]{8})$/);
 					// http://zotero.org/users/aFeGasdG/items/8QZ36WQ3 -> http://zotero.org/users/local/aFeGasdG/items/8QZ36WQ3
 					if (matches) {
 						object = `users/local/${matches[1]}/items/${matches[2]}`;
-						let uri = `http://zotero.org/users/local/${matches[1]}/items/${matches[2]}`;
+						let uri = `${baseURL}users/local/${matches[1]}/items/${matches[2]}`;
 						await Zotero.DB.queryAsync("UPDATE itemRelations SET object=? WHERE ROWID=?", [uri, row.id]);
 					}
 					
@@ -3202,7 +3205,7 @@ Zotero.Schema = new function(){
 			else if (i == 92) {
 				let userID = await Zotero.DB.valueQueryAsync("SELECT value FROM settings WHERE setting='account' AND key='userID'");
 				if (userID) {
-					await Zotero.DB.queryAsync("UPDATE itemRelations SET object='http://zotero.org/users/' || ? || SUBSTR(object, 39) WHERE object LIKE ?", [userID, 'http://zotero.org/users/local/%']);
+					await Zotero.DB.queryAsync(`UPDATE itemRelations SET object='${baseURL}users/' || ? || SUBSTR(object, ${baseURL.length + 21}) WHERE object LIKE ?`, [userID, `${baseURL}users/local/%`]);
 				}
 			}
 			
@@ -3211,7 +3214,7 @@ Zotero.Schema = new function(){
 				await Zotero.DB.queryAsync("CREATE TABLE publicationsItems (\n    itemID INTEGER PRIMARY KEY\n);");
 				await Zotero.DB.queryAsync("INSERT INTO publicationsItems SELECT itemID FROM items WHERE libraryID=4");
 				await Zotero.DB.queryAsync("UPDATE OR IGNORE items SET libraryID=1, synced=0 WHERE libraryID=4");
-				await Zotero.DB.queryAsync("DELETE FROM itemRelations WHERE object LIKE ? AND object LIKE ?", ['http://zotero.org/users/%', '%/publications/items%']);
+				await Zotero.DB.queryAsync("DELETE FROM itemRelations WHERE object LIKE ? AND object LIKE ?", [`${baseURL}users/%`, '%/publications/items%']);
 				await Zotero.DB.queryAsync("DELETE FROM libraries WHERE libraryID=4");
 				
 				let rows = await Zotero.DB.queryAsync("SELECT itemID, data FROM syncCache JOIN items USING (libraryID, key, version) WHERE syncObjectTypeID=3");
@@ -3269,11 +3272,12 @@ Zotero.Schema = new function(){
 				if (userID && predicateID) {
 					let rows = await Zotero.DB.queryAsync("SELECT itemID, object FROM items JOIN itemRelations IR USING (itemID) WHERE libraryID=? AND predicateID=?", [1, predicateID]);
 					for (let row of rows) {
-						let matches = row.object.match(/^http:\/\/zotero.org\/users\/(\d+)\/items\/([A-Z0-9]+)$/);
+						let matchExp = new RegExp(`^${baseEscaped}users/(\d+)/items/([A-Z0-9]+)$`);
+						let matches = row.object.match(matchExp);
 						if (matches) {
 							// Wrong libraryID
 							if (matches[1] != userID) {
-								await Zotero.DB.queryAsync(`UPDATE OR REPLACE itemRelations SET object='http://zotero.org/users/${userID}/items/${matches[2]}' WHERE itemID=? AND predicateID=?`, [row.itemID, predicateID]);
+								await Zotero.DB.queryAsync(`UPDATE OR REPLACE itemRelations SET object='${baseURL}users/${userID}/items/${matches[2]}' WHERE itemID=? AND predicateID=?`, [row.itemID, predicateID]);
 							}
 						}
 					}
@@ -3333,7 +3337,7 @@ Zotero.Schema = new function(){
 			}
 			
 			else if (i == 108) {
-				await Zotero.DB.queryAsync(`DELETE FROM itemRelations WHERE predicateID=(SELECT predicateID FROM relationPredicates WHERE predicate='owl:sameAs') AND object LIKE ?`, 'http://zotero.org/users/local/%');
+				await Zotero.DB.queryAsync(`DELETE FROM itemRelations WHERE predicateID=(SELECT predicateID FROM relationPredicates WHERE predicate='owl:sameAs') AND object LIKE ?`, `${baseURL}users/local/%`);
 			}
 			
 			else if (i == 109) {
@@ -3730,7 +3734,7 @@ Zotero.Schema = new function(){
 			await Zotero.DB.queryAsync("INSERT OR IGNORE INTO relationPredicates VALUES (NULL, 'dc:relation')");
 			predicateID = await Zotero.DB.valueQueryAsync("SELECT predicateID FROM relationPredicates WHERE predicate=?", 'dc:relation');
 		}
-		await Zotero.DB.queryAsync("INSERT OR IGNORE INTO itemRelations SELECT ISA.itemID, " + predicateID + ", 'http://zotero.org/' || (CASE WHEN G.libraryID IS NULL THEN 'users/' || IFNULL((SELECT value FROM settings WHERE setting='account' AND key='userID'), 'local/' || (SELECT value FROM settings WHERE setting='account' AND key='localUserKey')) ELSE 'groups/' || G.groupID END) || '/items/' || I.key FROM itemSeeAlso ISA JOIN items I ON (ISA.linkedItemID=I.itemID) LEFT JOIN groups G USING (libraryID)");
+		await Zotero.DB.queryAsync("INSERT OR IGNORE INTO itemRelations SELECT ISA.itemID, " + predicateID + `, '${ZOTERO_CONFIG.WWW_BASE_URL}' || (CASE WHEN G.libraryID IS NULL THEN 'users/' || IFNULL((SELECT value FROM settings WHERE setting='account' AND key='userID'), 'local/' || (SELECT value FROM settings WHERE setting='account' AND key='localUserKey')) ELSE 'groups/' || G.groupID END) || '/items/' || I.key FROM itemSeeAlso ISA JOIN items I ON (ISA.linkedItemID=I.itemID) LEFT JOIN groups G USING (libraryID)`);
 		await Zotero.DB.queryAsync("DROP TABLE itemSeeAlso");
 	};
 	

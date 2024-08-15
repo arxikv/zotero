@@ -26,7 +26,7 @@
 
 Zotero.URI = new function () {
 	Zotero.defineProperty(this, 'defaultPrefix', {
-		value: 'http://zotero.org/'
+		value: ZOTERO_CONFIG.WWW_BASE_URL
 	});
 	
 	// This should match all possible URIs. Match groups are as follows:
