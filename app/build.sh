@@ -662,7 +662,8 @@ if [ $BUILD_WIN == 1 ]; then
 	
 	fi
 	
-	for arch in win32 win-x64 win-arm64; do
+	#for arch in win32 win-x64 win-arm64; do
+	for arch in win-x64 win-arm64; do
 		echo "Building Zotero_$arch"
 		
 		runtime_path="${WIN_RUNTIME_PATH_PREFIX}${arch}"
@@ -844,11 +845,12 @@ fi
 # Linux
 if [ $BUILD_LINUX == 1 ]; then
 	# Skip 32-bit build in tests
-	if [[ "${ZOTERO_TEST:-}" = "1" ]] || [[ "${SKIP_32:-}" = "1" ]]; then
-		archs="x86_64"
-	else
-		archs="i686 x86_64"
-	fi
+	#if [[ "${ZOTERO_TEST:-}" = "1" ]] || [[ "${SKIP_32:-}" = "1" ]]; then
+	#	archs="x86_64"
+	#else
+	#	archs="i686 x86_64"
+	#fi
+	archs="x86_64"
 	
 	for arch in $archs; do
 		runtime_path="${LINUX_RUNTIME_PATH_PREFIX}${arch}"
