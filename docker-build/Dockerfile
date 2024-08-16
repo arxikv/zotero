@@ -37,6 +37,6 @@ RUN ./app/scripts/dir_build -p m && \
     cd app/staging && \
     zip -rqX /packages/Zotero7_mac.zip Zotero.app
 
-FROM scratch as packages
+FROM scratch AS packages
 
 COPY --from=builder /packages/ /
