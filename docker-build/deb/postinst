@@ -1,0 +1,22 @@
+#!/bin/bash
+set -e
+
+case "$1" in
+    configure)
+        if [ ! -d "/usr/share/desktop-directories" ]; then
+            mkdir -p /usr/share/desktop-directories
+        fi
+        xdg-desktop-menu install --novendor /usr/share/applications/zotero.desktop
+        xdg-mime install --novendor /usr/share/mime/packages/zotero.xml
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+exit 0
